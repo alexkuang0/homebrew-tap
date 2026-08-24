@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "homebrew-cask-authoring": {
+      "source": "connorads/dotfiles",
+      "sourceType": "github",
+      "skillPath": "skills/homebrew-cask-authoring/SKILL.md",
+      "computedHash": "521b74bceb5f8b6160d3469275e3b4b5081d25ed54b7e756846c406fe32f5c92"
+    }
+  }
+}
