@@ -1,0 +1,188 @@
+name: Bump tap casks
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-tap-casks
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Bump cask when a new release is available
+        env:
+          APPCAST_URL: https://releases.waku.sh/appcast.xml
+          RELEASES_URL: https://releases.waku.sh
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_version="$(sed -nE 's/^  version "([^"]+)"$/\1/p' Casks/waku.rb | head -1)"
+          if [[ ! "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Could not read a stable version from Casks/waku.rb" >&2
+            exit 1
+          fi
+
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          curl --fail --location --retry 3 --silent --show-error \
+            "$APPCAST_URL" --output "$workdir/appcast.xml"
+
+          latest_version="$(python3 - "$workdir/appcast.xml" <<'PY'
+          import re
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse(sys.argv[1])
+          for element in root.iter():
+              if element.tag.rsplit("}", 1)[-1] != "shortVersionString":
+                  continue
+              value = (element.text or "").strip()
+              if re.fullmatch(r"\d+\.\d+\.\d+", value):
+                  print(value)
+                  break
+          else:
+              raise SystemExit("No stable Waku version found in appcast")
+          PY
+          )"
+
+          if python3 - "$current_version" "$latest_version" <<'PY'
+          import sys
+
+          current = tuple(map(int, sys.argv[1].split(".")))
+          latest = tuple(map(int, sys.argv[2].split(".")))
+          raise SystemExit(0 if latest > current else 1)
+          PY
+          then
+            echo "Updating Waku from $current_version to $latest_version"
+          else
+            echo "Waku is already current at $current_version"
+            exit 0
+          fi
+
+          dmg_url="${RELEASES_URL}/Waku-${latest_version}.dmg"
+          curl --fail --location --retry 3 --silent --show-error \
+            "$dmg_url" --output "$workdir/Waku.dmg"
+          sha256="$(shasum -a 256 "$workdir/Waku.dmg" | awk '{print $1}')"
+
+          python3 - "$latest_version" "$sha256" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          cask_path = Path("Casks/waku.rb")
+          contents = cask_path.read_text()
+          version, sha256 = sys.argv[1:]
+
+          contents, version_count = re.subn(
+              r'(?m)^(  version ")[^"]+("$)',
+              rf'\g<1>{version}\g<2>',
+              contents,
+          )
+          contents, sha_count = re.subn(
+              r'(?m)^(  sha256 ")[^"]+("$)',
+              rf'\g<1>{sha256}\g<2>',
+              contents,
+          )
+          if version_count != 1 or sha_count != 1:
+              raise SystemExit("Expected exactly one version and sha256 stanza")
+          cask_path.write_text(contents)
+          PY
+
+          HOMEBREW_NO_AUTO_UPDATE=1 brew style --fix Casks/waku.rb
+          git diff --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/waku.rb
+          git commit -m "waku ${latest_version}"
+          git push origin HEAD:main
+
+      - name: Bump ego lite cask version when a new release is available
+        env:
+          UPDATE_URL: https://update.citrolabs.ai/service/update2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_version="$(sed -nE 's/^  version "([^"]+)"$/\1/p' Casks/ego-lite.rb | head -1)"
+          if [[ ! "$current_version" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "Could not read a version from Casks/ego-lite.rb" >&2
+            exit 1
+          fi
+
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          curl --fail --location --retry 3 --silent --show-error \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{"request":{"protocol":"4.0","acceptformat":"download,run","os":{"platform":"Mac OS X","arch":"arm64"},"apps":[{"appid":"com.citrolabs.ego.lite","updatecheck":{}}]}}' \
+            "$UPDATE_URL" --output "$workdir/update.json"
+
+          latest_version="$(python3 - "$workdir/update.json" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          response = Path(sys.argv[1]).read_text()
+          response = response[response.index("{"):]
+          payload = json.loads(response)
+          value = payload["response"]["apps"][0]["updatecheck"]["nextversion"]
+          if not re.fullmatch(r"\d+(?:\.\d+)+", value):
+              raise SystemExit(f"Unexpected ego lite version: {value}")
+          print(value)
+          PY
+          )"
+
+          if python3 - "$current_version" "$latest_version" <<'PY'
+          import sys
+
+          current = tuple(map(int, sys.argv[1].split(".")))
+          latest = tuple(map(int, sys.argv[2].split(".")))
+          raise SystemExit(0 if latest > current else 1)
+          PY
+          then
+            echo "Updating ego lite from $current_version to $latest_version"
+          else
+            echo "ego lite is already current at $current_version"
+            exit 0
+          fi
+
+          python3 - "$latest_version" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          cask_path = Path("Casks/ego-lite.rb")
+          contents = cask_path.read_text()
+          (latest_version,) = sys.argv[1:]
+          contents, count = re.subn(
+              r'(?m)^(  version ")[^"]+("$)',
+              rf'\g<1>{latest_version}\g<2>',
+              contents,
+          )
+          if count != 1:
+              raise SystemExit("Expected exactly one version stanza")
+          cask_path.write_text(contents)
+          PY
+
+          HOMEBREW_NO_AUTO_UPDATE=1 brew style --fix Casks/ego-lite.rb
+          git diff --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/ego-lite.rb
+          git commit -m "ego-lite ${latest_version}"
+          git push origin HEAD:main
