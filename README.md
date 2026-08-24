@@ -22,12 +22,20 @@ brew install --cask alexkuang0/tap/ego-lite
 
 The cask also links `ego-browser` onto your PATH from inside the app bundle.
 
-## Update / uninstall
+### waku
 
-The app self-updates. `brew upgrade` is a no-op unless you pass `--greedy`.
+[Waku](https://waku.sh/) is a native desktop app for working with local coding agents. macOS only (Apple Silicon, Ventura or newer).
 
 ```bash
-brew upgrade --cask --greedy ego-lite
-brew uninstall --cask ego-lite
-brew uninstall --cask --zap ego-lite
+brew install --cask alexkuang0/tap/waku
+```
+
+## Update / uninstall
+
+The apps self-update. `brew upgrade` is a no-op unless you pass `--greedy`.
+
+```bash
+brew upgrade --cask --greedy ego-lite waku
+brew uninstall --cask ego-lite waku
+brew uninstall --cask --zap ego-lite waku
 ```
