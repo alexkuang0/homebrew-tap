@@ -1,6 +1,6 @@
 cask "waku" do
-  version "0.1.15"
-  sha256 "be2b0419df25051d77ca2d0fae1f92df9af6fb52590fc96df35f9b6fa23e9f1c"
+  version "0.1.16"
+  sha256 "1b83cc7b7505daa4ced58b1c4ac26c919c61f5a16bb26a17d8b6f4e56e5b39c5"
 
   url "https://releases.waku.sh/Waku-#{version}.dmg"
   name "Waku"
