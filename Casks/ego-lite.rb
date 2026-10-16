@@ -1,7 +1,7 @@
 cask "ego-lite" do
   arch arm: "arm64", intel: "x64"
 
-  version "0.5.1.13"
+  version "0.6.0.12"
   sha256 :no_check
 
   url "https://cdn.ego.app/setup/macos/#{arch}/egolite.dmg"
