@@ -30,12 +30,20 @@ The cask also links `ego-browser` onto your PATH from inside the app bundle.
 brew install --cask alexkuang0/tap/waku
 ```
 
+### yab
+
+[Yab](https://yetanotherbrowser.com/) is a WebKit browser built on Arc's ideas, where your own Claude or ChatGPT works in your tabs. macOS only (Apple Silicon and Intel, Sequoia or newer).
+
+```bash
+brew install --cask alexkuang0/tap/yab
+```
+
 ## Update / uninstall
 
 The apps self-update. `brew upgrade` is a no-op unless you pass `--greedy`.
 
 ```bash
-brew upgrade --cask --greedy ego-lite waku
-brew uninstall --cask ego-lite waku
-brew uninstall --cask --zap ego-lite waku
+brew upgrade --cask --greedy ego-lite waku yab
+brew uninstall --cask ego-lite waku yab
+brew uninstall --cask --zap ego-lite waku yab
 ```
