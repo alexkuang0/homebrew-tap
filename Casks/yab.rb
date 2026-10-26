@@ -1,5 +1,5 @@
 cask "yab" do
-  version "0.39.1"
+  version "0.39.7"
   sha256 :no_check
 
   url "https://yetanotherbrowser.com/yab.dmg"
